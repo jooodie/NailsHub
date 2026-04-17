@@ -1,4 +1,4 @@
-import Image from "next/image";
+﻿import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
@@ -12,6 +12,8 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { getAuthUser } from "@/lib/data/auth";
+import { getMyProfile } from "@/lib/data/profile";
 import { getShopDetail } from "@/lib/data/shops";
 import { formatDataError } from "@/lib/errors";
 
@@ -27,6 +29,9 @@ export default async function ShopDetailPage({ params }: Props) {
   } catch (e) {
     error = formatDataError(e);
   }
+
+  const user = await getAuthUser();
+  const profile = user ? await getMyProfile() : null;
 
   if (error) {
     return (
@@ -139,7 +144,15 @@ export default async function ShopDetailPage({ params }: Props) {
           </div>
 
           <aside className="min-w-0 lg:sticky lg:top-6 lg:self-start">
-            <BookingForm shop={shop} />
+            <BookingForm
+              shop={shop}
+              isLoggedIn={Boolean(user)}
+              profile={
+                profile
+                  ? { name: profile.name, phone: profile.phone, email: profile.email }
+                  : null
+              }
+            />
           </aside>
         </div>
       </main>

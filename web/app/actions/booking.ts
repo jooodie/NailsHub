@@ -1,7 +1,8 @@
-"use server";
+﻿"use server";
 
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { getShopDetail } from "@/lib/data/shops";
+import { getMyProfile } from "@/lib/data/profile";
 import type { BookingCreatePayload } from "@/lib/types/booking";
 
 export type SubmitBookingResult =
@@ -12,6 +13,30 @@ export async function submitBooking(
   payload: BookingCreatePayload,
 ): Promise<SubmitBookingResult> {
   try {
+    const sb = await createSupabaseServerClient();
+    const {
+      data: { user },
+      error: userErr,
+    } = await sb.auth.getUser();
+
+    if (userErr) {
+      return { ok: false, message: userErr.message };
+    }
+    if (!user) {
+      return { ok: false, message: "請先登入再預約" };
+    }
+
+    const profile = await getMyProfile();
+    if (!profile) {
+      return { ok: false, message: "找不到使用者資料，請重新登入" };
+    }
+
+    const customerName = payload.customer_name.trim() || profile.name.trim();
+    const customerPhone = payload.customer_phone.trim() || profile.phone.trim();
+    if (!customerName || !customerPhone) {
+      return { ok: false, message: "請完整填寫姓名與電話" };
+    }
+
     const shop = await getShopDetail(payload.shop_id);
     if (!shop) {
       return { ok: false, message: "店家不存在" };
@@ -27,7 +52,6 @@ export async function submitBooking(
       return { ok: false, message: "該日期或時段無法預約" };
     }
 
-    const sb = await createSupabaseServerClient();
     const { data, error } = await sb
       .from("bookings")
       .insert({
@@ -35,8 +59,10 @@ export async function submitBooking(
         service_id: payload.service_id,
         date: payload.date,
         time_slot: payload.time_slot,
-        customer_name: payload.customer_name.trim(),
-        customer_phone: payload.customer_phone.trim(),
+        customer_user_id: user.id,
+        customer_name: customerName,
+        customer_phone: customerPhone,
+        customer_email: profile.email,
         customer_notes: payload.customer_notes?.trim() || null,
       })
       .select("id")

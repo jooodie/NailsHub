@@ -1,10 +1,11 @@
-"use client";
+﻿"use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 
 import { submitBooking } from "@/app/actions/booking";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import {
   Card,
   CardContent,
@@ -15,8 +16,14 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import type { ShopDetail } from "@/lib/types/shop";
 import { cn } from "@/lib/utils";
+import type { ShopDetail } from "@/lib/types/shop";
+
+type ProfilePrefill = {
+  name: string;
+  phone: string;
+  email: string;
+};
 
 const selectClass = cn(
   "flex h-9 w-full rounded-lg border border-input bg-transparent px-2.5 py-1 text-sm shadow-xs outline-none transition-colors",
@@ -24,9 +31,13 @@ const selectClass = cn(
   "disabled:cursor-not-allowed disabled:opacity-50 dark:bg-input/30",
 );
 
-type Props = { shop: ShopDetail };
+type Props = {
+  shop: ShopDetail;
+  isLoggedIn: boolean;
+  profile: ProfilePrefill | null;
+};
 
-export function BookingForm({ shop }: Props) {
+export function BookingForm({ shop, isLoggedIn, profile }: Props) {
   const router = useRouter();
   const firstDay = shop.availability[0];
   const firstService = shop.services[0];
@@ -44,8 +55,8 @@ export function BookingForm({ shop }: Props) {
     return day?.slots[0] ?? "";
   });
 
-  const [name, setName] = useState("");
-  const [phone, setPhone] = useState("");
+  const [name, setName] = useState(profile?.name ?? "");
+  const [phone, setPhone] = useState(profile?.phone ?? "");
   const [notes, setNotes] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
@@ -85,6 +96,25 @@ export function BookingForm({ shop }: Props) {
     }
   }
 
+  if (!isLoggedIn) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>登入後可預約</CardTitle>
+          <CardDescription>請先登入/註冊，系統會保存你的預約紀錄與聯絡資料。</CardDescription>
+        </CardHeader>
+        <CardContent className="flex flex-wrap gap-2">
+          <Link href="/auth/sign-in" className={cn(buttonVariants({ size: "sm" }))}>
+            使用者登入
+          </Link>
+          <Link href="/auth/sign-up" className={cn(buttonVariants({ size: "sm", variant: "outline" }))}>
+            註冊帳號
+          </Link>
+        </CardContent>
+      </Card>
+    );
+  }
+
   if (!firstService || !firstDay) {
     return (
       <Card>
@@ -103,7 +133,7 @@ export function BookingForm({ shop }: Props) {
       <CardHeader>
         <CardTitle>線上預約</CardTitle>
         <CardDescription>
-          送出後會寫入 Supabase（請先完成資料庫 migration 與環境變數）。
+          送出後會寫入 Supabase。姓名與電話可修改，若修改會覆寫你目前帳號的資料。
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -200,6 +230,11 @@ export function BookingForm({ shop }: Props) {
               disabled={isSubmitting}
               placeholder="09xxxxxxxx"
             />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="email">Email（登入帳號）</Label>
+            <Input id="email" name="email" value={profile?.email ?? ""} disabled readOnly />
           </div>
 
           <div className="space-y-2">

@@ -1,12 +1,79 @@
-import { createSupabaseServerClient } from "@/lib/supabase/server";
+﻿import { createSupabaseServerClient } from "@/lib/supabase/server";
 import type { ShopDetail, ShopListItem } from "@/lib/types/shop";
 
-export async function listShops(): Promise<ShopListItem[]> {
+export const SUPPORTED_CITIES = ["台南市"] as const;
+export const PREFERRED_DISTRICTS = ["東區", "中西區"] as const;
+
+type ShopFilter = {
+  city?: string;
+  district?: string;
+  date?: string;
+};
+
+function normalizeCity(city?: string): string {
+  return city?.trim() || "台南市";
+}
+
+export async function listShopDistricts(city?: string): Promise<string[]> {
+  if (normalizeCity(city) !== "台南市") {
+    return [];
+  }
+
   const sb = await createSupabaseServerClient();
-  const { data, error } = await sb
+  const { data, error } = await sb.from("shops").select("district").order("district");
+  if (error) throw new Error(error.message);
+
+  const fromDb = new Set(
+    (data ?? []).map((row) => String(row.district ?? "").trim()).filter(Boolean),
+  );
+
+  const ordered: string[] = PREFERRED_DISTRICTS.filter((d) => fromDb.has(d));
+  const extra = Array.from(fromDb)
+    .filter((d) => !ordered.includes(d))
+    .sort((a, b) => a.localeCompare(b, "zh-Hant"));
+
+  return [...ordered, ...extra];
+}
+
+export async function listShops(opts?: ShopFilter): Promise<ShopListItem[]> {
+  const city = normalizeCity(opts?.city);
+  if (city !== "台南市") {
+    return [];
+  }
+
+  const sb = await createSupabaseServerClient();
+  const district = opts?.district?.trim();
+  const date = opts?.date?.trim();
+
+  let shopIdsByDate: string[] | null = null;
+  if (date) {
+    const { data: rows, error: dateErr } = await sb
+      .from("shop_availability")
+      .select("shop_id")
+      .eq("date", date);
+    if (dateErr) throw new Error(dateErr.message);
+
+    shopIdsByDate = Array.from(
+      new Set((rows ?? []).map((row) => String(row.shop_id ?? "")).filter(Boolean)),
+    );
+    if (shopIdsByDate.length === 0) {
+      return [];
+    }
+  }
+
+  let query = sb
     .from("shops")
     .select("id,name,cover_image_url,district,summary")
     .order("id");
+
+  if (district) {
+    query = query.eq("district", district);
+  }
+  if (shopIdsByDate) {
+    query = query.in("id", shopIdsByDate);
+  }
+
+  const { data, error } = await query;
   if (error) throw new Error(error.message);
   return (data ?? []) as ShopListItem[];
 }

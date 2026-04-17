@@ -1,22 +1,49 @@
-import Image from "next/image";
+﻿import Image from "next/image";
 import Link from "next/link";
 
 import { AppShell } from "@/components/layout/app-shell";
 import { buttonVariants } from "@/components/ui/button";
-import { listShops } from "@/lib/data/shops";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  listShopDistricts,
+  listShops,
+  SUPPORTED_CITIES,
+} from "@/lib/data/shops";
 import { formatDataError } from "@/lib/errors";
 import type { ShopListItem } from "@/lib/types/shop";
 import { cn } from "@/lib/utils";
 
-export default async function ShopsPage() {
+type Props = {
+  searchParams: Promise<{ city?: string; district?: string; date?: string }>;
+};
+
+export default async function ShopsPage({ searchParams }: Props) {
+  const sp = await searchParams;
+  const city = sp.city?.trim() || "台南市";
+  const district = sp.district?.trim() || "";
+  const date = sp.date?.trim() || "";
+
   let shops: ShopListItem[];
+  let districts: string[];
   let error: string | null = null;
+
   try {
-    shops = await listShops();
+    [shops, districts] = await Promise.all([
+      listShops({
+        city,
+        district: district || undefined,
+        date: date || undefined,
+      }),
+      listShopDistricts(city),
+    ]);
   } catch (e) {
     shops = [];
+    districts = [];
     error = formatDataError(e);
   }
+
+  const hasFilter = Boolean(district || date || city !== "台南市");
 
   return (
     <AppShell>
@@ -31,6 +58,61 @@ export default async function ShopsPage() {
           </p>
         </div>
 
+        {!error ? (
+          <section className="mb-6 rounded-lg border border-border bg-card p-4">
+            <p className="mb-3 text-sm font-medium text-foreground">篩選條件</p>
+
+            <form method="get" action="/shops" className="grid gap-4 md:grid-cols-3">
+              <div className="space-y-2">
+                <Label htmlFor="city">縣市</Label>
+                <select
+                  id="city"
+                  name="city"
+                  defaultValue={city}
+                  className="flex h-8 w-full rounded-lg border border-input bg-transparent px-2.5 py-1 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+                >
+                  {SUPPORTED_CITIES.map((item) => (
+                    <option key={item} value={item}>
+                      {item}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="district">各區</Label>
+                <select
+                  id="district"
+                  name="district"
+                  defaultValue={district}
+                  className="flex h-8 w-full rounded-lg border border-input bg-transparent px-2.5 py-1 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+                >
+                  <option value="">全部</option>
+                  {districts.map((item) => (
+                    <option key={item} value={item}>
+                      {item}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="date">想預約的日期</Label>
+                <Input id="date" name="date" type="date" defaultValue={date} />
+              </div>
+
+              <div className="md:col-span-3 flex flex-wrap gap-2">
+                <button type="submit" className={cn(buttonVariants({ size: "sm" }))}>
+                  套用篩選
+                </button>
+                <Link href="/shops" className={cn(buttonVariants({ size: "sm", variant: "outline" }))}>
+                  清除條件
+                </Link>
+              </div>
+            </form>
+          </section>
+        ) : null}
+
         {error ? (
           <div
             className="rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive"
@@ -43,6 +125,12 @@ export default async function ShopsPage() {
               <code className="font-mono">NEXT_PUBLIC_SUPABASE_ANON_KEY</code>
               ，並在 Supabase SQL Editor 執行專案內的 migration 建立資料表。
             </p>
+          </div>
+        ) : shops.length === 0 ? (
+          <div className="rounded-lg border border-border bg-card px-4 py-6 text-sm text-muted-foreground">
+            {hasFilter
+              ? "目前沒有符合你篩選條件的店家。"
+              : "目前尚無店家資料。"}
           </div>
         ) : (
           <ul className="grid gap-6 sm:grid-cols-2">
@@ -60,7 +148,7 @@ export default async function ShopsPage() {
                   </div>
                   <div className="space-y-1 p-4">
                     <p className="text-xs font-medium text-muted-foreground">
-                      {shop.district}
+                      {city}・{shop.district}
                     </p>
                     <h2 className="text-lg font-semibold leading-snug text-foreground">
                       {shop.name}

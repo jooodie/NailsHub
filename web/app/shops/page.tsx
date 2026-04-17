@@ -3,37 +3,19 @@ import Link from "next/link";
 
 import { AppShell } from "@/components/layout/app-shell";
 import { buttonVariants } from "@/components/ui/button";
-import { getApiBaseUrl } from "@/lib/api";
+import { listShops } from "@/lib/data/shops";
+import { formatDataError } from "@/lib/errors";
 import type { ShopListItem } from "@/lib/types/shop";
 import { cn } from "@/lib/utils";
-
-function formatFetchError(e: unknown, apiBase: string): string {
-  const msg = e instanceof Error ? e.message : String(e);
-  const low = msg.toLowerCase();
-  if (low.includes("fetch failed") || low.includes("econnrefused")) {
-    return `無法連線到後端 ${apiBase}（請在「另一個」終端機啟動 FastAPI，並保持視窗開著）。`;
-  }
-  return msg;
-}
-
-async function fetchShops(): Promise<ShopListItem[]> {
-  const base = getApiBaseUrl();
-  const res = await fetch(`${base}/shops`, { cache: "no-store" });
-  if (!res.ok) {
-    throw new Error(`無法取得店家列表：HTTP ${res.status}`);
-  }
-  return res.json() as Promise<ShopListItem[]>;
-}
 
 export default async function ShopsPage() {
   let shops: ShopListItem[];
   let error: string | null = null;
-  const apiBase = getApiBaseUrl();
   try {
-    shops = await fetchShops();
+    shops = await listShops();
   } catch (e) {
     shops = [];
-    error = formatFetchError(e, apiBase);
+    error = formatDataError(e);
   }
 
   return (
@@ -44,7 +26,8 @@ export default async function ShopsPage() {
             台南美甲店家
           </h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            資料為假資料，之後會接正式資料庫。
+            資料來自 Supabase（請先建立專案並執行 <code className="font-mono">supabase/migrations</code>{" "}
+            內 SQL）。
           </p>
         </div>
 
@@ -54,30 +37,12 @@ export default async function ShopsPage() {
             role="alert"
           >
             {error}
-            <span className="mt-2 block text-xs text-muted-foreground">
-              前端（<code className="font-mono">npm run dev</code>）與後端（
-              <code className="font-mono">uvicorn</code>
-              ）要<strong className="text-foreground">兩個終端各跑一個</strong>。在{" "}
-              <code className="rounded bg-muted px-1 font-mono text-foreground">
-                backend
-              </code>{" "}
-              資料夾：
-              <code className="mt-1 block rounded bg-muted px-2 py-1.5 font-mono text-[11px] leading-snug text-foreground sm:text-xs">
-                .\.venv\Scripts\Activate.ps1
-                <br />
-                uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
-              </code>
-              先在瀏覽器開{" "}
-              <a
-                className="font-medium text-primary underline underline-offset-2"
-                href={`${apiBase}/shops`}
-                target="_blank"
-                rel="noreferrer"
-              >
-                {apiBase}/shops
-              </a>{" "}
-              ，若能看到 JSON 代表後端正常，再重新整理本頁。
-            </span>
+            <p className="mt-2 text-xs text-muted-foreground">
+              請在 <code className="rounded bg-muted px-1 font-mono">web/.env.local</code> 設定{" "}
+              <code className="font-mono">NEXT_PUBLIC_SUPABASE_URL</code> 與{" "}
+              <code className="font-mono">NEXT_PUBLIC_SUPABASE_ANON_KEY</code>
+              ，並在 Supabase SQL Editor 執行專案內的 migration 建立資料表。
+            </p>
           </div>
         ) : (
           <ul className="grid gap-6 sm:grid-cols-2">

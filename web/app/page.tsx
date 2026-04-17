@@ -18,7 +18,8 @@ export default function Home() {
             在台南找美甲店、看服務與時段，線上完成預約
           </h1>
           <p className="mt-4 text-pretty text-base leading-relaxed text-muted-foreground sm:text-lg">
-            店家列表已接上後端假資料 API；啟動 FastAPI 後即可在「瀏覽店家」查看。
+            店家與預約資料由 Supabase 提供；設定好專案與 <code className="font-mono">.env.local</code>{" "}
+            後即可在「瀏覽店家」使用完整流程。
           </p>
           <div className="mt-10 flex flex-col items-center justify-center gap-3 sm:flex-row">
             <Link href="/shops" className={cn(buttonVariants({ size: "lg" }))}>

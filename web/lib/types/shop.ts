@@ -6,3 +6,24 @@ export type ShopListItem = {
   district: string;
   summary: string;
 };
+
+export type ServiceItem = {
+  id: string;
+  name: string;
+  price_ntd: number;
+  duration_minutes: number;
+};
+
+export type DayAvailability = {
+  date: string;
+  slots: string[];
+};
+
+/** 對應後端 `GET /shops/{id}` */
+export type ShopDetail = ShopListItem & {
+  address: string;
+  description: string;
+  phone: string;
+  services: ServiceItem[];
+  availability: DayAvailability[];
+};

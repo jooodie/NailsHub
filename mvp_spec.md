@@ -15,12 +15,17 @@
 
 ---
 
-Runtime：Python 3.11+
-Web：FastAPI + Uvicorn（或 Gunicorn + Uvicorn workers 上線用）
-DB：PostgreSQL
-ORM／遷移：SQLAlchemy 2.x + Alembic
-設定：pydantic-settings（.env 分環境）
-API 風格：REST、/shops、/shops/{id}/stylists 這類資源路徑；錯誤格式統一即可
+框架：Next.js
+UI：Tailwind CS + shadcn/ui
+後端與資料庫：Supabase
+  Secuiry:
+    Enable Data API
+    Autogenerate a RESTful API for your public schema. Recommended if using a client library like supabase-js.
+    
+    Enable automatic RLS
+    Create an event trigger that automatically enables Row Level Security on all new tables in the public schema.
+
+
 
 
 ## 2. 目標使用者
